@@ -3,6 +3,7 @@ import { InGameState } from './controller/InGameState'
 import type { AllGameData } from './types/AllGameData'
 import type { Config } from './types/Config'
 import { FarsightData } from './types/FarsightData'
+const fs = require("fs");
 
 module.exports = async (ctx: PluginContext) => {
   const namespace = ctx.plugin.module.getName()
@@ -189,4 +190,55 @@ module.exports = async (ctx: PluginContext) => {
     },
     status: 'RUNNING'
   })
+
+  function writeGameState() {
+    let towersBlue, towersRed;
+    for (const [teamId, team] of Object.entries(inGameState.gameState.towers)) {
+        const value = teamId === '100' ? towersRed : towersBlue
+        let newValue = 0
+    
+        for (const lane of Object.values(team)) {
+          for (const alive of Object.values(lane)) {
+            if (alive) continue
+    
+            newValue += 1
+          }
+        }
+    
+        if(teamId === '100')
+            towersRed = newValue
+        else
+            towersBlue = newValue
+      }
+
+
+    const stateConv = [{
+        time : convertSecsToTime(inGameState.gameState.gameTime),
+        killsBlue : inGameState.gameState.kills[100],
+        killsRed : inGameState.gameState.kills[200],
+        goldBlue : calcK(inGameState.gameState.gold[100]),
+        goldRed : calcK(inGameState.gameState.gold[200]),
+        towersBlue : towersBlue,
+        towersRed : towersRed,
+    }];
+    fs.writeFileSync('./gamestate.json', JSON.stringify(stateConv));
+}
+
+function calcK(amount: number) {
+    switch (true) {
+      case amount > 1000:
+        return `${(amount / 1000).toFixed(1)} K`
+      case amount < -1000:
+        return `${(amount / 1000).toFixed(1)} K`
+      default: 
+        return amount.toFixed(0)
+    }
+}
+
+function convertSecsToTime(secs: number) {
+    const newSecs = Math.round(secs)
+    const minutes = Math.floor(newSecs / 60)
+    const seconds = newSecs % 60
+    return `${('0' + minutes).slice(-2)}:${('0' + seconds).slice(-2)}`
+  }
 }
